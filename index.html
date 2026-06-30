@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>AKAR — The Last Storyteller | Heritage Quiz</title>
+<style>
+  :root{
+    --ink:#2B1810;
+    --gold:#C9A84C;
+    --gold-light:#E4CD86;
+    --cream:#F7F0E3;
+    --cream-dim:#EDE3CD;
+    --ok:#3F7D4D;
+    --ok-bg:#DCEEDD;
+    --bad:#A33A2E;
+    --bad-bg:#F6DEDA;
+
+    --kd-light:#D4E6C3; --kd-dark:#4A7C3F;
+    --ib-light:#FAD9A1; --ib-dark:#8B5E00;
+    --in-light:#F4C2C2; --in-dark:#8B1A1A;
+    --ma-light:#C9E4F5; --ma-dark:#1A5276;
+    --ch-light:#E8D5F5; --ch-dark:#5B2C6F;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{
+    margin:0; padding:0; height:100%; width:100%;
+    overflow:hidden;
+    background:var(--ink);
+    font-family:-apple-system, "Helvetica Neue", Arial, sans-serif;
+    color:var(--ink);
+    user-select:none;
+    touch-action:manipulation;
+  }
+
+  #app{
+    position:fixed; inset:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  .screen{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    padding:4vh 5vw;
+    opacity:0; pointer-events:none;
+    transition:opacity .35s ease;
+  }
+  .screen.active{ opacity:1; pointer-events:auto; }
+
+  /* ---------- decorative root texture (signature element) ---------- */
+  .root-bg{
+    position:absolute; inset:0; z-index:0;
+    background:
+      radial-gradient(ellipse at 50% 120%, rgba(201,168,76,0.16), transparent 60%),
+      var(--ink);
+    overflow:hidden;
+  }
+  .root-bg svg{ position:absolute; bottom:-2%; left:0; width:100%; height:42%; opacity:.55; }
+
+  /* ================= HOME SCREEN ================= */
+  #screen-home .home-inner{
+    position:relative; z-index:1;
+    display:flex; flex-direction:column; align-items:center;
+    width:100%; max-width:1100px;
+  }
+  .brand-eyebrow{
+    letter-spacing:.35em; text-transform:uppercase;
+    font-size:clamp(11px,1.3vw,14px); color:var(--gold);
+    font-weight:600; margin-bottom:.6rem;
+  }
+  .brand-title{
+    font-size:clamp(34px,6vw,58px); font-weight:800;
+    color:var(--cream); margin:0; letter-spacing:-0.01em;
+    line-height:1;
+  }
+  .brand-sub{
+    color:var(--gold-light); font-size:clamp(14px,1.8vw,19px);
+    font-style:italic; margin:.5rem 0 3.2vh 0; font-weight:400;
+  }
+  .window-grid{
+    display:grid; grid-template-columns:repeat(5,1fr); gap:18px;
+    width:100%;
+  }
+  .window-card{
+    background:var(--cream); border-radius:22px; padding:22px 14px 18px;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+    cursor:pointer; border:none; font-family:inherit;
+    transform:translateY(0); transition:transform .15s ease, box-shadow .15s ease;
+    box-shadow:0 6px 0 rgba(0,0,0,0.18);
+    min-height:190px;
+  }
+  .window-card:active{ transform:translateY(5px); box-shadow:0 1px 0 rgba(0,0,0,0.18); }
+  .window-icon{
+    width:58px; height:58px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:28px;
+  }
+  .window-name{ font-weight:800; font-size:clamp(13px,1.5vw,16px); text-align:center; line-height:1.15; }
+  .window-tag{ font-size:clamp(10px,1.1vw,12px); opacity:.7; text-align:center; font-weight:600; }
+
+  .unity-strip{
+    margin-top:3.5vh; display:flex; align-items:center; gap:10px;
+    color:var(--gold-light); font-size:clamp(12px,1.4vw,15px);
+  }
+  .unity-dot{ width:9px; height:9px; border-radius:50%; background:var(--gold); }
+
+  /* ================= QUIZ SCREEN ================= */
+  #screen-quiz .quiz-inner{
+    position:relative; z-index:1; width:100%; max-width:880px;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  .quiz-topbar{
+    width:100%; display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:2.2vh;
+  }
+  .quiz-pill{
+    display:flex; align-items:center; gap:8px;
+    padding:8px 18px; border-radius:999px; font-weight:800;
+    font-size:clamp(12px,1.4vw,15px); letter-spacing:.04em;
+  }
+  .dot-row{ display:flex; gap:8px; }
+  .step-dot{ width:11px; height:11px; border-radius:50%; background:rgba(247,240,227,0.25); transition:background .2s; }
+  .step-dot.done{ background:var(--gold); }
+  .step-dot.current{ background:var(--cream); }
+  .exit-btn{
+    background:none; border:1.5px solid rgba(247,240,227,0.35); color:var(--cream-dim);
+    border-radius:999px; padding:8px 16px; font-size:clamp(11px,1.2vw,13px);
+    font-weight:700; cursor:pointer; font-family:inherit;
+  }
+
+  .question-card{
+    background:var(--cream); border-radius:26px; padding:clamp(20px,3.5vw,38px);
+    width:100%; box-shadow:0 10px 0 rgba(0,0,0,0.22);
+    display:flex; flex-direction:column; gap:18px;
+  }
+  .q-topic{
+    font-size:clamp(11px,1.2vw,13px); font-weight:800; letter-spacing:.12em;
+    text-transform:uppercase; opacity:.65;
+  }
+  .q-text{
+    font-size:clamp(19px,2.6vw,28px); font-weight:800; line-height:1.28;
+    color:var(--ink);
+  }
+  .options-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:14px;
+  }
+  .opt-btn{
+    background:#fff; border:2.5px solid #e3d8c2; border-radius:16px;
+    padding:16px 18px; text-align:left; font-family:inherit;
+    font-size:clamp(14px,1.6vw,17px); font-weight:600; color:var(--ink);
+    cursor:pointer; display:flex; align-items:flex-start; gap:12px;
+    min-height:80px; transition:transform .1s ease, border-color .15s, background .15s;
+  }
+  .opt-btn:active{ transform:scale(0.98); }
+  .opt-letter{
+    flex:0 0 30px; width:30px; height:30px; border-radius:50%;
+    background:var(--cream-dim); display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:14px; color:var(--ink); opacity:.7;
+  }
+  .opt-btn.correct{ background:var(--ok-bg); border-color:var(--ok); }
+  .opt-btn.correct .opt-letter{ background:var(--ok); color:#fff; opacity:1; }
+  .opt-btn.wrong{ background:var(--bad-bg); border-color:var(--bad); }
+  .opt-btn.wrong .opt-letter{ background:var(--bad); color:#fff; opacity:1; }
+  .opt-btn.dim{ opacity:.45; }
+  .opt-btn.locked{ pointer-events:none; }
+
+  .feedback-bar{
+    display:flex; align-items:center; gap:14px;
+    border-radius:16px; padding:14px 18px; opacity:0; max-height:0;
+    overflow:hidden; transition:opacity .25s ease, max-height .3s ease, padding .3s ease;
+  }
+  .feedback-bar.show{ opacity:1; max-height:160px; padding:14px 18px; }
+  .feedback-bar.ok{ background:var(--ok-bg); }
+  .feedback-bar.bad{ background:var(--bad-bg); }
+  .fb-emoji{ font-size:28px; flex:0 0 auto; }
+  .fb-text{ font-size:clamp(13px,1.5vw,16px); font-weight:600; line-height:1.4; color:var(--ink); }
+  .fb-text b{ font-weight:800; }
+
+  .next-btn{
+    align-self:flex-end; background:var(--ink); color:var(--cream);
+    border:none; border-radius:999px; padding:13px 30px;
+    font-weight:800; font-size:clamp(13px,1.5vw,16px); font-family:inherit;
+    cursor:pointer; opacity:0; pointer-events:none; transition:opacity .25s ease;
+    display:flex; align-items:center; gap:8px;
+  }
+  .next-btn.show{ opacity:1; pointer-events:auto; }
+
+  /* root progress visual */
+  .root-track{
+    width:100%; display:flex; justify-content:center; margin-top:2.4vh;
+    z-index:1; position:relative;
+  }
+
+  /* ================= RESULT SCREEN ================= */
+  #screen-result .result-inner{
+    position:relative; z-index:1; display:flex; flex-direction:column;
+    align-items:center; text-align:center; max-width:680px;
+  }
+  .result-badge{
+    width:96px; height:96px; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; font-size:46px; margin-bottom:18px;
+    box-shadow:0 6px 0 rgba(0,0,0,0.2);
+  }
+  .result-headline{ color:var(--cream); font-size:clamp(24px,3.4vw,36px); font-weight:800; margin:0 0 8px; }
+  .result-sub{ color:var(--gold-light); font-size:clamp(14px,1.7vw,18px); margin:0 0 3vh; font-style:italic; }
+  .result-score{
+    display:flex; gap:10px; margin-bottom:3vh;
+  }
+  .score-leaf{
+    width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:16px; background:rgba(247,240,227,0.12); color:var(--cream-dim);
+    transition:all .3s ease;
+  }
+  .score-leaf.lit{ background:var(--gold); color:var(--ink); transform:scale(1.12); }
+  .result-actions{ display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+  .action-btn{
+    border:none; border-radius:999px; padding:15px 28px; font-weight:800;
+    font-size:clamp(13px,1.5vw,16px); font-family:inherit; cursor:pointer;
+  }
+  .action-btn.primary{ background:var(--gold); color:var(--ink); box-shadow:0 5px 0 rgba(0,0,0,0.22); }
+  .action-btn.secondary{ background:transparent; color:var(--cream); border:1.5px solid rgba(247,240,227,0.4); }
+  .action-btn:active{ transform:translateY(3px); }
+
+  @media (max-width: 700px){
+    .window-grid{ grid-template-columns:repeat(2,1fr); }
+    .options-grid{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============ HOME SCREEN ============ -->
+  <div class="screen active" id="screen-home">
+    <div class="root-bg" id="rootbg-home"></div>
+    <div class="home-inner">
+      <div class="brand-eyebrow">AKAR &middot; Roots of Malaysia</div>
+      <h1 class="brand-title">The Last Storyteller</h1>
+      <p class="brand-sub">Tap a Heritage Window to begin your quiz</p>
+
+      <div class="window-grid" id="window-grid"></div>
+
+      <div class="unity-strip">
+        <span class="unity-dot"></span>
+        <span id="unity-count">0 stories joined the Heritage Unity Circle today</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ QUIZ SCREEN ============ -->
+  <div class="screen" id="screen-quiz">
+    <div class="root-bg" id="rootbg-quiz"></div>
+    <div class="quiz-inner">
+      <div class="quiz-topbar">
+        <div class="quiz-pill" id="quiz-pill">Heritage Window</div>
+        <div class="dot-row" id="dot-row"></div>
+        <button class="exit-btn" id="exit-btn">✕ Exit</button>
+      </div>
+
+      <div class="question-card">
+        <div class="q-topic" id="q-topic">Topic</div>
+        <div class="q-text" id="q-text">Question text</div>
+        <div class="options-grid" id="options-grid"></div>
+        <div class="feedback-bar" id="feedback-bar">
+          <div class="fb-emoji" id="fb-emoji">🌱</div>
+          <div class="fb-text" id="fb-text">Feedback</div>
+        </div>
+        <button class="next-btn" id="next-btn">Next Question →</button>
+      </div>
+
+      <div class="root-track" id="root-track"></div>
+    </div>
+  </div>
+
+  <!-- ============ RESULT SCREEN ============ -->
+  <div class="screen" id="screen-result">
+    <div class="root-bg" id="rootbg-result"></div>
+    <div class="result-inner">
+      <div class="result-badge" id="result-badge">🌳</div>
+      <h2 class="result-headline" id="result-headline">Roots Grown!</h2>
+      <p class="result-sub" id="result-sub">You learned something the world is forgetting.</p>
+      <div class="result-score" id="result-score"></div>
+      <div class="result-actions">
+        <button class="action-btn secondary" id="btn-retry">↻ Try This Window Again</button>
+        <button class="action-btn primary" id="btn-home">🏠 Choose Another Window</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+
+/* =========================================================================
+   DATA — Heritage Windows + Quiz Bank
+   Each window: id, label, icon, light/dark colours, and 9 questions
+   grouped as [Runway x3, Exhibit1 x3, Exhibit2 x3]
+   ========================================================================= */
+
+const WINDOWS = [
+  {
+    id:"kd", name:"Kadazan-Dusun", icon:"🪶", light:"var(--kd-light)", dark:"var(--kd-dark)",
+    exhibits:["Bobohizan Headdress","Sompoton Gourd Organ"],
+    questions:[
+      {block:"Runway", topic:"Kadazan-Dusun Runway", q:"The Kadazan-Dusun are the largest indigenous ethnic group in which Malaysian state?",
+        opts:["Sarawak","Sabah","Selangor","Kedah"], correct:1,
+        fact:"Sabah is home to Mount Kinabalu — sacred to the Kadazan-Dusun as the resting place of ancestral spirits."},
+      {block:"Runway", topic:"Kadazan-Dusun Runway", q:"What is the name of the major annual harvest festival celebrated by the Kadazan-Dusun?",
+        opts:["Gawai Dayak","Hari Moyang","Kaamatan","Tadau Keamatan Besar"], correct:2,
+        fact:"Kaamatan thanks the rice spirit Bambaazon for a good harvest, and is celebrated every May."},
+      {block:"Runway", topic:"Kadazan-Dusun Runway", q:"Which deity is considered the supreme god and rice deity of the Kadazan-Dusun?",
+        opts:["Minamangun","Kinoingan","Rogon Sunduan","Nabalu"], correct:1,
+        fact:"Kinoingan is honoured as the creator god in Kadazan-Dusun belief."},
+      {block:"Bobohizan Headdress", topic:"Bobohizan Headdress", q:"What is the role of a Bobohizan in Kadazan-Dusun society?",
+        opts:["A warrior chief who leads battles","A high priestess who performs sacred rituals","A royal court dancer","A village headman or administrator"], correct:1,
+        fact:"Bobohizans are spiritual guides — and very few young people are training to take on the role today."},
+      {block:"Bobohizan Headdress", topic:"Bobohizan Headdress", q:"The Bobohizan headdress is adorned with which materials?",
+        opts:["Bronze coins and hornbill feathers only","Woven palm leaves and rattan","Colourful beads, seeds, coins, and feathers","Carved ironwood and silver wire"], correct:2,
+        fact:"Every bead and feather on the headdress carries meaning passed down through generations."},
+      {block:"Bobohizan Headdress", topic:"Bobohizan Headdress", q:"Which ceremony do Bobohizan priestesses lead during the harvest season?",
+        opts:["Gawai Dayak","Kaamatan / Magavau rice harvest ritual","Tadau Keamatan procession","Pesta Nukenen"], correct:1,
+        fact:"The Magavau ritual calls the spirit of the rice home after harvest."},
+      {block:"Sompoton Gourd Organ", topic:"Sompoton Gourd Organ", q:"What is the Sompoton primarily made from?",
+        opts:["Carved hardwood and brass reeds","Rattan frame with metal pipes","A dried gourd fitted with bamboo pipes","Woven coconut husks and bamboo"], correct:2,
+        fact:"The gourd acts as a natural wind chamber — no two Sompotons sound exactly alike."},
+      {block:"Sompoton Gourd Organ", topic:"Sompoton Gourd Organ", q:"How many bamboo pipes does a traditional Sompoton typically have?",
+        opts:["4 pipes","6 pipes","8 pipes","12 pipes"], correct:2,
+        fact:"Eight pipes of different lengths create the Sompoton's full harmonic range."},
+      {block:"Sompoton Gourd Organ", topic:"Sompoton Gourd Organ", q:"How does a player produce sound from the Sompoton?",
+        opts:["By striking the bamboo pipes with a mallet","By blowing and sucking air through the gourd mouthpiece","By plucking strings attached to the gourd body","By spinning the instrument to create vibration"], correct:1,
+        fact:"Like a harmonica, the Sompoton makes sound on both the inhale and the exhale."}
+    ]
+  },
+  {
+    id:"ib", name:"Iban", icon:"🧶", light:"var(--ib-light)", dark:"var(--ib-dark)",
+    exhibits:["Pua Kumbu Dream Cloth","Gawai Kenyalang"],
+    questions:[
+      {block:"Runway", topic:"Iban Runway", q:"The Iban are the largest ethnic group in which Malaysian state?",
+        opts:["Sabah","Johor","Sarawak","Pahang"], correct:2,
+        fact:"The Iban make up roughly a third of Sarawak's population."},
+      {block:"Runway", topic:"Iban Runway", q:"What is the traditional communal longhouse of the Iban called?",
+        opts:["Rumah Bujang","Rumah Panjang","Rumah Pangkalan","Rumah Tuai"], correct:1,
+        fact:"A single Rumah Panjang can house dozens of families living side by side."},
+      {block:"Runway", topic:"Iban Runway", q:"What does the Gawai Dayak festival celebrate?",
+        opts:["A victory in inter-tribal warfare","The rice harvest and giving of thanks","Initiation rites for young Iban warriors","The founding of the first Iban longhouse"], correct:1,
+        fact:"Gawai Dayak is celebrated every June 1st across Sarawak."},
+      {block:"Pua Kumbu Dream Cloth", topic:"Pua Kumbu Dream Cloth", q:"What does 'Pua Kumbu' literally mean in the Iban language?",
+        opts:["Sacred spirit blanket","Dream weaving of ancestors","Grand blanket or great cloth","Warrior's victory cloth"], correct:2,
+        fact:"Despite the name, every Pua Kumbu pattern is deeply spiritual to the weaver."},
+      {block:"Pua Kumbu Dream Cloth", topic:"Pua Kumbu Dream Cloth", q:"Who traditionally weaves the Pua Kumbu?",
+        opts:["Male shamans (manang) only","Iban women","Both men and women equally","Young girls as a coming-of-age task"], correct:1,
+        fact:"Master weavers earn deep respect — weaving skill was once as prestigious as a warrior's bravery."},
+      {block:"Pua Kumbu Dream Cloth", topic:"Pua Kumbu Dream Cloth", q:"The patterns woven into the Pua Kumbu are believed to represent what?",
+        opts:["Royal genealogies of Iban chiefs","Spiritual visions and dreams received by the weaver","Maps showing Iban migration routes","Agricultural calendars for planting seasons"], correct:1,
+        fact:"Weavers say the patterns come to them in dreams sent by the spirits."},
+      {block:"Gawai Kenyalang", topic:"Gawai Kenyalang", q:"What does 'Kenyalang' refer to in Iban culture?",
+        opts:["A river guardian deity","The Rhinoceros Hornbill bird","A type of ceremonial war shield","An ancestor spirit carving"], correct:1,
+        fact:"The hornbill is seen as a messenger between the Iban and the spirit world."},
+      {block:"Gawai Kenyalang", topic:"Gawai Kenyalang", q:"The Gawai Kenyalang ceremony is historically associated with which tradition?",
+        opts:["Rice harvest thanksgiving","Coming-of-age initiation for young women","Warrior rites linked to headhunting traditions","Marriage blessing ceremonies"], correct:2,
+        fact:"Today the ceremony survives as a cultural and spiritual event, not a warrior rite."},
+      {block:"Gawai Kenyalang", topic:"Gawai Kenyalang", q:"From which material is the sacred Kenyalang effigy traditionally carved?",
+        opts:["Fired clay painted with natural dyes","Woven rattan shaped over a bamboo frame","Wood, painted in red, black, and white","Dried palm fronds bound with rattan"], correct:2,
+        fact:"Few carvers today still know the full ritual process behind making a Kenyalang effigy."}
+    ]
+  },
+  {
+    id:"in", name:"Indian", icon:"🥁", light:"var(--in-light)", dark:"var(--in-dark)",
+    exhibits:["Therukoothu","Silambam"],
+    questions:[
+      {block:"Runway", topic:"Indian Runway", q:"Which Tamil performing art combines open-air storytelling, elaborate costumes, and all-night drama?",
+        opts:["Bharatanatyam","Therukoothu","Kuchipudi","Kathak"], correct:1,
+        fact:"Therukoothu performances can run through the entire night during temple festivals."},
+      {block:"Runway", topic:"Indian Runway", q:"The Indian Malaysian community is predominantly descended from which group of migrants?",
+        opts:["Gujarati merchants who arrived during the Mughal era","Tamil labourers who arrived during British colonial rule","Punjabi soldiers recruited by the British Army","Bengali scholars invited by the Malay sultans"], correct:1,
+        fact:"Many Tamil families came to work on rubber estates in the 19th and 20th centuries."},
+      {block:"Runway", topic:"Indian Runway", q:"Which traditional South Asian martial art using a long staff is practised by Tamil Malaysians?",
+        opts:["Kalaripayattu","Gatka","Silambam","Varma Kalai"], correct:2,
+        fact:"Silambam is one of the oldest martial arts in the world, predating many others by centuries."},
+      {block:"Therukoothu", topic:"Therukoothu", q:"What does the word 'Therukoothu' literally mean in Tamil?",
+        opts:["Temple dance of the gods","Street theatre or street play","Dance of a thousand lamps","Victory parade of warriors"], correct:1,
+        fact:"'Theru' means street, and 'koothu' means dance-drama — performed for everyone, not just the elite."},
+      {block:"Therukoothu", topic:"Therukoothu", q:"Therukoothu performances traditionally take place in which setting?",
+        opts:["Inside Hindu temples during private rituals","In royal courts for the raja's entertainment","In open streets and village grounds during festivals","In dedicated performance halls with ticketed audiences"], correct:2,
+        fact:"Anyone walking by could stop and watch — that's the heart of 'street theatre'."},
+      {block:"Therukoothu", topic:"Therukoothu", q:"Which Indian epic provides the main storylines for most Therukoothu performances?",
+        opts:["The Ramayana","The Mahabharata","The Bhagavata Purana","The Tirukkural"], correct:1,
+        fact:"Performers often play warriors and kings from the Mahabharata in dramatic, larger-than-life style."},
+      {block:"Silambam", topic:"Silambam", q:"Silambam is a traditional martial art that primarily uses which weapon?",
+        opts:["A curved sword (vel)","A long bamboo or wooden staff","A pair of short daggers","A weighted chain (urumi)"], correct:1,
+        fact:"The staff can be swung fast enough to create a whirring sound in the air."},
+      {block:"Silambam", topic:"Silambam", q:"Silambam originates from which region and is practised by which community in Malaysia?",
+        opts:["Punjab; practised by Sikh Malaysians","Tamil Nadu; practised by Tamil Malaysians","Kerala; practised by Malayalam-speaking Malaysians","Gujarat; practised by Indian Muslim communities"], correct:1,
+        fact:"Silambam was recently reinstated at SUKMA 2026 — a big step toward keeping it alive."},
+      {block:"Silambam", topic:"Silambam", q:"Silambam is classified under which broader category of heritage?",
+        opts:["A classical dance form listed by UNESCO","A traditional martial art and living intangible cultural heritage","A ritual healing practice requiring temple space","A competitive sport governed by the Olympic Committee"], correct:1,
+        fact:"Recognition alone isn't enough — Silambam still needs young practitioners to keep training."}
+    ]
+  },
+  {
+    id:"ma", name:"Malay", icon:"🎭", light:"var(--ma-light)", dark:"var(--ma-dark)",
+    exhibits:["Mak Yong Headdress","Mek Mulung Mask"],
+    questions:[
+      {block:"Runway", topic:"Malay Runway", q:"Which traditional Malay performing art has been inscribed by UNESCO as Intangible Cultural Heritage in Need of Urgent Safeguarding?",
+        opts:["Zapin","Dikir Barat","Mak Yong","Joget"], correct:2,
+        fact:"UNESCO's 'urgent safeguarding' list is reserved for traditions truly at risk of disappearing."},
+      {block:"Runway", topic:"Malay Runway", q:"Traditional Malay performing arts like Mak Yong and Mek Mulung are most strongly preserved in which region of Malaysia?",
+        opts:["The east coast states of Kelantan and Terengganu","Johor Bahru and the southern corridor","Selangor and the Klang Valley","Penang and the northern states"], correct:0,
+        fact:"Kelantan and Terengganu are considered the heartland of Malay classical performing arts."},
+      {block:"Runway", topic:"Malay Runway", q:"Which of these is considered one of the oldest forms of Malay theatrical performance?",
+        opts:["Bangsawan","Menora","Mak Yong","Wayang Kulit"], correct:2,
+        fact:"Mak Yong is believed to date back centuries, blending dance, drama, and live music."},
+      {block:"Mak Yong Headdress", topic:"Mak Yong Headdress", q:"Mak Yong is a traditional Malay performing art that combines which elements?",
+        opts:["Martial arts, weaponry display, and drumming","Dance, drama, and live music (usually rebab and gendang)","Glove puppetry and shadow-play storytelling","Poetry recitation and acrobatics"], correct:1,
+        fact:"The rebab, a bowed string instrument, carries much of Mak Yong's haunting melody."},
+      {block:"Mak Yong Headdress", topic:"Mak Yong Headdress", q:"In which Malaysian state was Mak Yong banned for a period due to religious concerns?",
+        opts:["Selangor","Pahang","Kelantan","Johor"], correct:2,
+        fact:"The ban affected public performances, pushing Mak Yong further toward the edge of disappearing."},
+      {block:"Mak Yong Headdress", topic:"Mak Yong Headdress", q:"Mak Yong was inscribed on which UNESCO list?",
+        opts:["UNESCO World Heritage Sites","UNESCO Intangible Cultural Heritage in Need of Urgent Safeguarding","UNESCO Creative Cities Network","UNESCO Memory of the World Register"], correct:1,
+        fact:"That UNESCO listing happened back in 2005 — and the art form still needs active protection today."},
+      {block:"Mek Mulung Mask", topic:"Mek Mulung Mask", q:"The Mek Mulung folk theatre tradition originates from which state?",
+        opts:["Kelantan","Kedah","Terengganu","Perlis"], correct:1,
+        fact:"Mek Mulung is closely tied to a single village tradition in Kedah."},
+      {block:"Mek Mulung Mask", topic:"Mek Mulung Mask", q:"Mek Mulung is best described as what form of performance?",
+        opts:["Ritual shadow puppetry for healing ceremonies","Folk comedy theatre featuring stylised masks and music","A royal court ceremony with strict protocols","An acrobatic martial arts display"], correct:1,
+        fact:"Its playful, comedic style makes it very different from the more solemn Mak Yong."},
+      {block:"Mek Mulung Mask", topic:"Mek Mulung Mask", q:"Which institution is known to preserve and train performers in Mek Mulung today?",
+        opts:["PUSAKA (Pusat Warisan Negara)","ASWARA (National Arts, Culture & Heritage Academy)","Akademi Seni Kebangsaan","Istana Budaya"], correct:1,
+        fact:"Without institutions like ASWARA actively training new performers, traditions like this can vanish in a generation."}
+    ]
+  },
+  {
+    id:"ch", name:"Chinese / Peranakan", icon:"🏮", light:"var(--ch-light)", dark:"var(--ch-dark)",
+    exhibits:["Wangkang Ceremonial Boat","Potehi Glove Puppet"],
+    questions:[
+      {block:"Runway", topic:"Chinese/Peranakan Runway", q:"The Peranakan (Baba-Nyonya) community in Malaysia are primarily descendants of which group?",
+        opts:["Chinese merchants who converted to Islam in the 15th century","Early Chinese settlers who married local Malay women","Chinese scholars sent to Malacca by the Ming dynasty","Cantonese migrants who arrived during the British colonial period"], correct:1,
+        fact:"Peranakan culture blends Chinese, Malay, and even European influences into something uniquely Malaysian."},
+      {block:"Runway", topic:"Chinese/Peranakan Runway", q:"What are the traditional Peranakan beaded slippers called?",
+        opts:["Selipar Jepun","Kasut Manek","Kasut Labu","Terompah"], correct:1,
+        fact:"Each pair of Kasut Manek could take months to hand-bead, stitch by stitch."},
+      {block:"Runway", topic:"Chinese/Peranakan Runway", q:"In which Chinese dialect is Potehi puppet theatre traditionally performed?",
+        opts:["Cantonese","Mandarin","Hakka","Hokkien (Minnan)"], correct:3,
+        fact:"Potehi travelled to Southeast Asia with Hokkien-speaking migrants generations ago."},
+      {block:"Wangkang Ceremonial Boat", topic:"Wangkang Ceremonial Boat", q:"What is the main purpose of the Wangkang (王爷船) ceremony?",
+        opts:["To celebrate the Lunar New Year with dragon boat races","To ritually send away plague spirits and pray for community blessings","To honour the sea goddess Mazu for safe voyages","To commemorate an ancient naval battle victory"], correct:1,
+        fact:"The ceremony is meant to carry sickness and misfortune away from the community."},
+      {block:"Wangkang Ceremonial Boat", topic:"Wangkang Ceremonial Boat", q:"How often is the Wangkang ceremony traditionally held?",
+        opts:["Every year during Chinese New Year","Every 3 years during the Hungry Ghost Festival","Once every 10–12 years","Once every 60 years"], correct:2,
+        fact:"Because it happens so rarely, many young people never get the chance to witness it even once."},
+      {block:"Wangkang Ceremonial Boat", topic:"Wangkang Ceremonial Boat", q:"What happens to the Wangkang boat at the climax of the ceremony?",
+        opts:["It is kept permanently in the temple as a sacred object","It is set adrift into the open sea","It is ceremonially burned to send the spirits away","It is dismantled and stored for the next ceremony"], correct:2,
+        fact:"The burning is the most dramatic and symbolic moment of the entire ritual."},
+      {block:"Potehi Glove Puppet", topic:"Potehi Glove Puppet", q:"Potehi glove puppet theatre originated from which Chinese province?",
+        opts:["Guangdong (Canton) province","Fujian (Hokkien) province","Sichuan province","Jiangsu (Shanghai) region"], correct:1,
+        fact:"Potehi means 'cloth bag puppet' — the puppet's body is literally a sewn cloth bag."},
+      {block:"Potehi Glove Puppet", topic:"Potehi Glove Puppet", q:"Approximately how many active Potehi troupes remain in Penang today?",
+        opts:["Over 20 troupes","About 10 troupes","About 4 troupes","Only 1 troupe"], correct:2,
+        fact:"With so few troupes left, every performance is a rare chance to see this art form alive."},
+      {block:"Potehi Glove Puppet", topic:"Potehi Glove Puppet", q:"Where are Potehi performances traditionally staged?",
+        opts:["Inside royal palaces for aristocratic audiences","At school festivals and national celebrations","At temple grounds and street shrines","In private homes for family gatherings only"], correct:2,
+        fact:"Potehi shows were once a common sight outside temples during deity birthday celebrations."}
+    ]
+  }
+];
+
+/* =========================================================================
+   STATE & HELPERS
+   ========================================================================= */
+let state = { windowIdx:null, qSet:[], qIdx:0, correctCount:0, locked:false, unityTotal:0 };
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function pickThree(win){
+  // group by block order: index 0-2 runway, 3-5 exhibit1, 6-8 exhibit2
+  const runway = win.questions.slice(0,3);
+  const ex1 = win.questions.slice(3,6);
+  const ex2 = win.questions.slice(6,9);
+  return [
+    runway[Math.floor(Math.random()*runway.length)],
+    ex1[Math.floor(Math.random()*ex1.length)],
+    ex2[Math.floor(Math.random()*ex2.length)]
+  ];
+}
+
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+/* =========================================================================
+   HOME SCREEN BUILD
+   ========================================================================= */
+const grid = document.getElementById("window-grid");
+WINDOWS.forEach((w, idx)=>{
+  const card = document.createElement("button");
+  card.className = "window-card";
+  card.style.background = "var(--cream)";
+  card.innerHTML = `
+    <div class="window-icon" style="background:${w.light}">${w.icon}</div>
+    <div class="window-name" style="color:${w.dark}">${w.name}</div>
+    <div class="window-tag">${w.exhibits.join(" · ")}</div>
+  `;
+  card.addEventListener("click", ()=> startQuiz(idx));
+  grid.appendChild(card);
+});
+
+function refreshUnity(){
+  document.getElementById("unity-count").textContent =
+    `${state.unityTotal} ${state.unityTotal===1?"story":"stories"} joined the Heritage Unity Circle today`;
+}
+refreshUnity();
+
+/* =========================================================================
+   QUIZ FLOW
+   ========================================================================= */
+const elPill = document.getElementById("quiz-pill");
+const elDots = document.getElementById("dot-row");
+const elTopic = document.getElementById("q-topic");
+const elQText = document.getElementById("q-text");
+const elOptions = document.getElementById("options-grid");
+const elFeedback = document.getElementById("feedback-bar");
+const elFbEmoji = document.getElementById("fb-emoji");
+const elFbText = document.getElementById("fb-text");
+const elNext = document.getElementById("next-btn");
+const elRootTrack = document.getElementById("root-track");
+
+function startQuiz(idx){
+  state.windowIdx = idx;
+  state.qSet = pickThree(WINDOWS[idx]);
+  state.qIdx = 0;
+  state.correctCount = 0;
+  showScreen("screen-quiz");
+  renderQuestion();
+}
+
+function renderDots(){
+  elDots.innerHTML = "";
+  for(let i=0;i<3;i++){
+    const d = document.createElement("div");
+    d.className = "step-dot" + (i<state.qIdx ? " done" : (i===state.qIdx ? " current" : ""));
+    elDots.appendChild(d);
+  }
+}
+
+function renderQuestion(){
+  const win = WINDOWS[state.windowIdx];
+  const item = state.qSet[state.qIdx];
+  state.locked = false;
+
+  elPill.style.background = win.light;
+  elPill.style.color = win.dark;
+  elPill.innerHTML = `${win.icon} ${win.name}`;
+  renderDots();
+
+  elTopic.textContent = item.block === "Runway" ? `${win.name} Runway` : item.topic;
+  elTopic.style.color = win.dark;
+  elQText.textContent = item.q;
+
+  const order = shuffle([0,1,2,3]);
+  elOptions.innerHTML = "";
+  order.forEach((origIdx, i)=>{
+    const letter = "ABCD"[i];
+    const btn = document.createElement("button");
+    btn.className = "opt-btn";
+    btn.innerHTML = `<span class="opt-letter">${letter}</span><span>${item.opts[origIdx]}</span>`;
+    btn.dataset.isCorrect = (origIdx === item.correct) ? "1" : "0";
+    btn.addEventListener("click", ()=> handleAnswer(btn, item));
+    elOptions.appendChild(btn);
+  });
+
+  elFeedback.classList.remove("show","ok","bad");
+  elNext.classList.remove("show");
+  renderRootTrack();
+}
+
+function renderRootTrack(){
+  const win = WINDOWS[state.windowIdx];
+  elRootTrack.innerHTML = "";
+  for(let i=0;i<3;i++){
+    const leaf = document.createElement("span");
+    const lit = i < state.qIdx + (state.locked ? 0 : 0); // updated after answer below
+    leaf.textContent = "🌿";
+    leaf.style.fontSize = "22px";
+    leaf.style.margin = "0 6px";
+    leaf.style.opacity = (i < state.correctCount) ? "1" : "0.18";
+    leaf.style.filter = (i < state.correctCount) ? "none" : "grayscale(1)";
+    elRootTrack.appendChild(leaf);
+  }
+}
+
+function handleAnswer(btn, item){
+  if(state.locked) return;
+  state.locked = true;
+  const isCorrect = btn.dataset.isCorrect === "1";
+
+  document.querySelectorAll(".opt-btn").forEach(b=>{
+    b.classList.add("locked");
+    if(b.dataset.isCorrect === "1") b.classList.add("correct");
+    else if(b === btn) b.classList.add("wrong");
+    else b.classList.add("dim");
+  });
+
+  elFeedback.classList.add("show", isCorrect ? "ok" : "bad");
+  elFbEmoji.textContent = isCorrect ? "🌱" : "🤔";
+  elFbText.innerHTML = isCorrect
+    ? `<b>Correct!</b> ${item.fact}`
+    : `<b>Not quite —</b> ${item.fact}`;
+
+  if(isCorrect) state.correctCount++;
+  renderRootTrack();
+
+  elNext.textContent = (state.qIdx < 2) ? "Next Question →" : "See My Roots →";
+  elNext.classList.add("show");
+}
+
+elNext.addEventListener("click", ()=>{
+  if(state.qIdx < 2){
+    state.qIdx++;
+    renderQuestion();
+  } else {
+    finishQuiz();
+  }
+});
+
+document.getElementById("exit-btn").addEventListener("click", ()=>{
+  showScreen("screen-home");
+});
+
+/* =========================================================================
+   RESULT SCREEN
+   ========================================================================= */
+function finishQuiz(){
+  const win = WINDOWS[state.windowIdx];
+  const score = state.correctCount;
+  state.unityTotal++;
+  refreshUnity();
+
+  const badge = document.getElementById("result-badge");
+  const headline = document.getElementById("result-headline");
+  const sub = document.getElementById("result-sub");
+  const scoreRow = document.getElementById("result-score");
+
+  badge.style.background = win.light;
+  badge.style.color = win.dark;
+  badge.textContent = score === 3 ? "🌳" : score === 0 ? "🌰" : "🌿";
+
+  headline.textContent =
+    score === 3 ? `Full Roots Grown — ${win.name}!` :
+    score === 0 ? `Every Story Starts Somewhere` :
+    `${score} of 3 Roots Grown!`;
+
+  sub.textContent =
+    score === 3 ? "You now know this story better than most visitors today." :
+    score === 0 ? "Read the exhibit again — this story deserves a second look." :
+    "You're helping keep this story alive.";
+
+  scoreRow.innerHTML = "";
+  for(let i=0;i<3;i++){
+    const leaf = document.createElement("div");
+    leaf.className = "score-leaf" + (i < score ? " lit" : "");
+    leaf.textContent = "🌿";
+    scoreRow.appendChild(leaf);
+  }
+
+  showScreen("screen-result");
+}
+
+document.getElementById("btn-retry").addEventListener("click", ()=> startQuiz(state.windowIdx));
+document.getElementById("btn-home").addEventListener("click", ()=> showScreen("screen-home"));
+
+/* =========================================================================
+   DECORATIVE ROOT SVG (signature background element)
+   ========================================================================= */
+function rootSvg(color){
+  return `<svg viewBox="0 0 800 200" preserveAspectRatio="none">
+    <path d="M0,40 Q150,10 200,90 Q230,140 280,120 Q340,95 400,150 Q460,190 540,140 Q610,100 680,150 Q740,185 800,150"
+      stroke="${color}" stroke-width="2.5" fill="none" opacity="0.5"/>
+    <path d="M0,90 Q120,140 220,130 Q300,122 360,170 Q430,190 520,160 Q600,135 700,175 Q760,195 800,180"
+      stroke="${color}" stroke-width="1.8" fill="none" opacity="0.35"/>
+  </svg>`;
+}
+["rootbg-home","rootbg-quiz","rootbg-result"].forEach(id=>{
+  document.getElementById(id).innerHTML = rootSvg("#C9A84C");
+});
+
+})();
+</script>
+</body>
+</html>
