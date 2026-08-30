@@ -486,16 +486,16 @@ function shuffle(arr){
   return a;
 }
 
-function pickThree(win){
+function pickFive(win){
   // group by block order: index 0-2 runway, 3-5 exhibit1, 6-8 exhibit2
-  const runway = win.questions.slice(0,3);
-  const ex1 = win.questions.slice(3,6);
-  const ex2 = win.questions.slice(6,9);
-  return [
-    runway[Math.floor(Math.random()*runway.length)],
-    ex1[Math.floor(Math.random()*ex1.length)],
-    ex2[Math.floor(Math.random()*ex2.length)]
-  ];
+  const runway = shuffle(win.questions.slice(0,3));
+  const ex1 = shuffle(win.questions.slice(3,6));
+  const ex2 = shuffle(win.questions.slice(6,9));
+  // guarantee at least 1 from each topic, then fill the rest at random without repeats
+  const picked = [runway[0], ex1[0], ex2[0]];
+  const remaining = shuffle([...runway.slice(1), ...ex1.slice(1), ...ex2.slice(1)]);
+  picked.push(remaining[0], remaining[1]);
+  return shuffle(picked);
 }
 
 function showScreen(id){
@@ -542,7 +542,7 @@ const elRootTrack = document.getElementById("root-track");
 
 function startQuiz(idx){
   state.windowIdx = idx;
-  state.qSet = pickThree(WINDOWS[idx]);
+  state.qSet = pickFive(WINDOWS[idx]);
   state.qIdx = 0;
   state.correctCount = 0;
   showScreen("screen-quiz");
@@ -551,7 +551,7 @@ function startQuiz(idx){
 
 function renderDots(){
   elDots.innerHTML = "";
-  for(let i=0;i<3;i++){
+  for(let i=0;i<state.qSet.length;i++){
     const d = document.createElement("div");
     d.className = "step-dot" + (i<state.qIdx ? " done" : (i===state.qIdx ? " current" : ""));
     elDots.appendChild(d);
@@ -592,7 +592,7 @@ function renderQuestion(){
 function renderRootTrack(){
   const win = WINDOWS[state.windowIdx];
   elRootTrack.innerHTML = "";
-  for(let i=0;i<3;i++){
+  for(let i=0;i<state.qSet.length;i++){
     const leaf = document.createElement("span");
     const lit = i < state.qIdx + (state.locked ? 0 : 0); // updated after answer below
     leaf.textContent = "🌿";
@@ -625,12 +625,12 @@ function handleAnswer(btn, item){
   if(isCorrect) state.correctCount++;
   renderRootTrack();
 
-  elNext.textContent = (state.qIdx < 2) ? "Next Question →" : "See My Roots →";
+  elNext.textContent = (state.qIdx < state.qSet.length - 1) ? "Next Question →" : "See My Roots →";
   elNext.classList.add("show");
 }
 
 elNext.addEventListener("click", ()=>{
-  if(state.qIdx < 2){
+  if(state.qIdx < state.qSet.length - 1){
     state.qIdx++;
     renderQuestion();
   } else {
@@ -656,22 +656,23 @@ function finishQuiz(){
   const sub = document.getElementById("result-sub");
   const scoreRow = document.getElementById("result-score");
 
+  const total = state.qSet.length;
   badge.style.background = win.light;
   badge.style.color = win.dark;
-  badge.textContent = score === 3 ? "🌳" : score === 0 ? "🌰" : "🌿";
+  badge.textContent = score === total ? "🌳" : score === 0 ? "🌰" : "🌿";
 
   headline.textContent =
-    score === 3 ? `Full Roots Grown — ${win.name}!` :
+    score === total ? `Full Roots Grown — ${win.name}!` :
     score === 0 ? `Every Story Starts Somewhere` :
-    `${score} of 3 Roots Grown!`;
+    `${score} of ${total} Roots Grown!`;
 
   sub.textContent =
-    score === 3 ? "You now know this story better than most visitors today." :
+    score === total ? "You now know this story better than most visitors today." :
     score === 0 ? "Read the exhibit again — this story deserves a second look." :
     "You're helping keep this story alive.";
 
   scoreRow.innerHTML = "";
-  for(let i=0;i<3;i++){
+  for(let i=0;i<total;i++){
     const leaf = document.createElement("div");
     leaf.className = "score-leaf" + (i < score ? " lit" : "");
     leaf.textContent = "🌿";
